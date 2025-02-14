@@ -1,28 +1,23 @@
-# Use an official Python image as a base
+# Use an official Python runtime as a parent image
 FROM python:3.10
 
-# Set the working directory
+# Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Install Poetry (Saleor uses Poetry for dependencies)
+RUN curl -sSL https://install.python-poetry.org | python3 -
 
-# Copy Saleor source code
+# Copy only necessary files to install dependencies
+COPY pyproject.toml poetry.lock /app/
+
+# Install dependencies
+RUN poetry install --no-root --no-dev
+
+# Copy the rest of the application files
 COPY . /app
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Collect static files
-RUN python manage.py collectstatic --noinput
-
-# Apply database migrations
-RUN python manage.py migrate
-
-# Expose the port Saleor runs on
+# Expose the port that the app runs on
 EXPOSE 8000
 
-# Start Saleor
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "saleor.wsgi:application"]
+# Command to start the application
+CMD ["poetry", "run", "python", "manage.py", "runserver", "0.0.0.0:8000"]
